@@ -1,0 +1,50 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, classification_report
+from tqdm import tqdm
+# Load the dataset
+data = pd.read_csv("smsspam.csv", encoding='latin1')
+df = pd.DataFrame(data)
+data.drop_duplicates(inplace=True)
+data['v1'] = data['v1'].map({'ham': 'ham', 'spam': 'spam'})
+X = data['v2']
+y = data['v1']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# vectorize the data set
+cnt_vectorizer = CountVectorizer()
+X_train_cnt = cnt_vectorizer.fit_transform(X_train)
+# Naive Bayes Classifier
+classifier = MultinomialNB()
+classifier.fit(X_train_cnt, y_train)
+# Transform the text data using the same vectorizer
+X_test_count = cnt_vectorizer.transform(X_test)
+# Make Prediction
+y_pred = classifier.predict(X_test_count)
+# calculate Accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", accuracy)
+# classification report
+report = classification_report(y_test, y_pred, target_names=['Legitimate SMS', 'Spam SMS'])
+print('classification report:')
+print(report)
+
+# Get inputs from the user
+msg = input("Enter a message: ")
+
+# Create a dataframe for user input
+user_data = pd.DataFrame({'v2': [msg]})
+
+# Transform the user input using the same vectorizer
+user_input_count = count_vectorizer.transform(user_data['v2'])
+
+# Make prediction
+prediction = classifier.predict(user_input_count)
+
+# Print the prediction
+if prediction[0] == 'ham':
+    print("This is a legitimate SMS.")
+else:
+    print("This is a spam SMS.")
