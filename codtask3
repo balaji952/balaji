@@ -1,0 +1,96 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+# Load the dataset
+data = pd.read_csv("fraud det.csv")
+
+# Display the first few rows of the dataset
+print(data.head())
+
+# Drop rows with missing target values
+data = data.dropna(subset=['is_fraud'])
+
+# Separate features and target
+X = data.drop(['is_fraud', 'cc_num', 'name', 'street', 'city', 'state', 'zip', 'trans_num'], axis=1)  # Drop non-numeric and non-relevant columns
+y = data['is_fraud']
+
+
+# Identify categorical columns
+categorical_cols = ['category']  # Add more categorical columns if present
+
+# Define preprocessing steps
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='mean')),
+            ('scaler', StandardScaler())
+        ]), X.select_dtypes(include=['float64', 'int64']).columns),
+        ('cat', Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='most_frequent')),
+            ('onehot', OneHotEncoder(handle_unknown='ignore'))
+        ]), categorical_cols)
+    ])
+
+# Create preprocessing and training pipeline
+def create_pipeline(model):
+    return Pipeline(steps=[('preprocessor', preprocessor),
+                           ('classifier', model)])
+
+# Initialize models
+rand_forest = create_pipeline(RandomForestClassifier())
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train the models
+models = {'Random Forest': rand_forest}
+
+for model_name, model in models.items():
+    model.fit(X_train, y_train)
+
+# Evaluate the models
+for model_name, model in models.items():
+    y_pred = model.predict(X_test)
+    print(f'{model_name} Performance:')
+    print(f'Accuracy: {accuracy_score(y_test, y_pred):.4f}')
+    print(f'Precision: {precision_score(y_test, y_pred):.4f}')
+    print(f'Recall: {recall_score(y_test, y_pred):.4f}')
+    print(f'F1 Score: {f1_score(y_test, y_pred):.4f}')
+    print('---')
+
+
+# User input for evaluation
+def evaluate_transaction(input_data):
+    input_data_df = pd.DataFrame([input_data], columns=X.columns)
+    results = {}
+    for model_name, model in models.items():
+        prediction = model.predict(input_data_df)[0]
+        results[model_name] = 'Fraudulent' if prediction == 1 else 'Legitimate'
+    return results
+
+# Example usage for user input
+def get_user_input():
+    print("Enter the transaction details:")
+    user_input = {}
+    for col in X.columns:
+        value = input(f"{col}: ")
+        if col in categorical_cols:
+            user_input[col] = value
+        else:
+            user_input[col] = float(value)
+    return user_input
+
+# Get user input and evaluate
+user_input = get_user_input()
+results = evaluate_transaction(user_input)
+print("Prediction Results:")
+for model_name, result in results.items():
+    print(f"{model_name}: {result}")
